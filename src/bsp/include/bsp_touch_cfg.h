@@ -1,0 +1,81 @@
+﻿/*
+ * bsp_touch_cfg.h
+ *
+ * maXTouch(mXT) 컨트롤러 레지스터 튜닝 값
+ *
+ */
+
+#ifndef BSP_TOUCH_CFG_H_
+#define BSP_TOUCH_CFG_H_
+
+/* \name TWI 결선 */
+/* @{ */
+#define BSP_TOUCH_TWI_BUS     TWIHS0
+#define BSP_TOUCH_TWI_ADDRESS 0x4Au
+/* @} */
+
+/* \name 리셋 타이밍 (ms) */
+/* @{ */
+#define BSP_TOUCH_RESET_ASSERT_MS  50
+#define BSP_TOUCH_RESET_RELEASE_MS 500
+/* @} */
+
+/* \name T7 POWERCONFIG: idle/active 취득 주기 */
+/* @{ */
+#define BSP_TOUCH_T7_IDLE_ACQ   0x20
+#define BSP_TOUCH_T7_ACTIVE_ACQ 0x10
+#define BSP_TOUCH_T7_ACTIVE2IDLE 0x4B
+/* @} */
+
+/* T18 COMMSCONFIG: CHG 라인 모드 */
+#define BSP_TOUCH_T18_CTRL 0x04
+
+/* T42 TOUCHSUPPRESSION */
+#define BSP_TOUCH_OBJECT_T42 42
+/* T42 CTRL: 비활성화 (얼굴/손바닥 억제 끔) */
+#define BSP_TOUCH_T42_CTRL   0x00
+
+/* T8 ACQUISITIONCONFIG */
+#define BSP_TOUCH_T8_VALUES \
+	{ 0x0d, 0x00, 0x05, 0x0a, 0x4b, 0x00, 0x00, 0x00, 0x00, 0x00 }
+
+/* T9 MULTITOUCHSCREEN */
+
+#define BSP_TOUCH_T9_VALUES \
+	{ \
+		0x8B, 0x00, 0x00, 0x0E, 0x08, 0x00, 0x80, 0x0A, 0x03, 0x02, \
+		0x0A, 0x03, 0x03, 0x20, 0x02, 0x0F, 0x0F, 0x0A, \
+		0xFF, 0x03, \
+		0xFF, 0x03, \
+		0x18, 0x18, 0x20, 0x20, 0x00, 0x00, \
+		0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x02, 0x02 \
+	}
+
+/** T46 CTE_CONFIGURATION */
+#define BSP_TOUCH_T46_VALUES \
+	{ 0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x03, 0x00, 0x00 }
+
+/** T56 SHIELDLESS */
+#define BSP_TOUCH_T56_VALUES \
+	{ \
+		0x02, 0x00, 0x01, 0x18, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, \
+		0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x00, 0x00, \
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
+		0x00, 0x00, 0x00 \
+	}
+
+/** \name BACKUPNV 완료 폴링 */
+/** @{ */
+#define BSP_TOUCH_BACKUP_POLL_MAX      50
+#define BSP_TOUCH_BACKUP_POLL_STEP_MS  20
+/** @} */
+
+/** 캘리브레이션 명령 후 안정화 대기 (ms) */
+#define BSP_TOUCH_CALIBRATE_SETTLE_MS 200
+
+/**
+ * 강제 릴리스까지의 시간 (ms)
+ */
+#define BSP_TOUCH_STUCK_TIMEOUT_MS 80u
+
+#endif /* BSP_TOUCH_CFG_H_ */

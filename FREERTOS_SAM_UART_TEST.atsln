@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Atmel Studio Solution File, Format Version 11.00
+VisualStudioVersion = 14.0.23107.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "FREERTOS_SAM_UART_TEST", "FREERTOS_SAM_UART_TEST.cproj", "{F675001F-490F-4B87-A5CC-4603799D43EF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Release|ARM = Release|ARM
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F675001F-490F-4B87-A5CC-4603799D43EF}.Debug|ARM.ActiveCfg = Debug|ARM
+		{F675001F-490F-4B87-A5CC-4603799D43EF}.Debug|ARM.Build.0 = Debug|ARM
+		{F675001F-490F-4B87-A5CC-4603799D43EF}.Release|ARM.ActiveCfg = Release|ARM
+		{F675001F-490F-4B87-A5CC-4603799D43EF}.Release|ARM.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
