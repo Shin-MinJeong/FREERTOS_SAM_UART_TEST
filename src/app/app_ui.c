@@ -11,10 +11,16 @@
 
 static lv_obj_t *s_console_screen;
 
+/**
+ * 화면 버튼이 눌렸다. 터미널에 그 명령을 타이핑한 것과 똑같이 실행한다.
+ *
+ * 실제 실행은 Comm 태스크가 한다(app_comm_exec 참고). 여기서 파서를 직접
+ * 부르면 UART 로 들어온 명령과 파서 상태가 엉킨다.
+ */
 static void on_console_send(const char *ascii_cmd)
 {
-	if (!app_comm_send(ascii_cmd)) {
-		LOG_E(TAG, "send failed: %s", ascii_cmd);
+	if (!app_comm_exec(ascii_cmd)) {
+		LOG_E(TAG, "exec failed: %s", ascii_cmd);
 	}
 }
 

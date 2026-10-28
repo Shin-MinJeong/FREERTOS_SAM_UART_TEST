@@ -1,146 +1,302 @@
 /*
  * cmd_parser.c
  *
- * ===========================================================
- *  골격 파일입니다. 아래 [TODO] 부분을 채우세요.
- * ===========================================================
+ * ASCII 명령 엔진 본체. 등록 / 해석 / 출력
  */
 
 #include "main.h"
 
+#include <stdarg.h>
+
 #define TAG "CMD"
 
-static cmd_parser_reply_cb_t s_reply;
+typedef struct {
+	const char   *name;
+	const char   *args;
+	cmd_handler_t handler;
+} cmd_entry_t;
 
-static void reply(const char *text)
+static cmd_entry_t    s_table[CMD_MAX_ENTRIES];
+static uint32_t       s_count;
+static cmd_write_fn_t s_write;
+
+static char *s_cursor;
+
+/** cmd_printf() 조립용 버퍼. 위와 같은 이유로 태스크 하나 전용이다. */
+static char s_tx[CMD_TX_MAX];
+
+/* ─────────────────────── 출력 ─────────────────────── */
+
+static void emit(uint32_t ch, const char *text)
 {
-	if (s_reply != NULL) {
-		s_reply(text);
+	if ((s_write != NULL) && (ch < CMD_CH_NUM)) {
+		s_write(ch, text);
 	}
 }
 
-/* ─────────────────────── 명령 핸들러 ─────────────────────── */
-
-/**
- * 예시 명령: PING -> PONG
- *
- * 새 명령은 이 함수를 복사해서 만들고 COMMAND_TABLE 에 한 줄 추가하면
- * 끝입니다.
- */
-static bool cmd_ping(uint32_t argc, char *argv[], cmd_parser_reply_cb_t out)
+static void format_and_emit(uint32_t ch, const char *fmt, va_list args,
+		bool add_eol)
 {
-	UNUSED(argc);
-	UNUSED(argv);
+	int length;
 
-	out("PONG");
+	length = CMD_VSNPRINTF(s_tx, sizeof(s_tx) - 3u, fmt, args);
+	if (length < 0) {
+		return;
+	}
+	if ((uint32_t)length >= (sizeof(s_tx) - 3u)) {
+		length = (int)(sizeof(s_tx) - 3u) - 1; /* 잘렸다 */
+	}
+
+	if (add_eol) {
+		s_tx[length]      = '\r';
+		s_tx[length + 1]  = '\n';
+		s_tx[length + 2]  = '\0';
+	}
+
+	emit(ch, s_tx);
+}
+
+void cmd_printf(uint32_t ch, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	format_and_emit(ch, fmt, args, true);
+	va_end(args);
+}
+
+void cmd_printf_raw(uint32_t ch, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	format_and_emit(ch, fmt, args, false);
+	va_end(args);
+}
+
+/* ─────────────────────── 인자 꺼내기 ─────────────────────── */
+
+char *cmd_arg_str(void)
+{
+	char *token;
+
+	if (s_cursor == NULL) {
+		return NULL;
+	}
+
+	while ((*s_cursor == ' ') || (*s_cursor == '\t')) {
+		s_cursor++;
+	}
+	if (*s_cursor == '\0') {
+		s_cursor = NULL;
+		return NULL;
+	}
+
+	token = s_cursor;
+
+	while ((*s_cursor != '\0') && (*s_cursor != ' ') && (*s_cursor != '\t')) {
+		s_cursor++;
+	}
+	if (*s_cursor != '\0') {
+		*s_cursor = '\0';
+		s_cursor++;
+	} else {
+		s_cursor = NULL;
+	}
+
+	return token;
+}
+
+char *cmd_arg_rest(void)
+{
+	char *rest;
+
+	if (s_cursor == NULL) {
+		return NULL;
+	}
+
+	while ((*s_cursor == ' ') || (*s_cursor == '\t')) {
+		s_cursor++;
+	}
+	if (*s_cursor == '\0') {
+		s_cursor = NULL;
+		return NULL;
+	}
+
+	rest     = s_cursor;
+	s_cursor = NULL;
+
+	return rest;
+}
+
+bool cmd_arg_dec(uint32_t *value)
+{
+	const char *token = cmd_arg_str();
+	bool        ok    = false;
+	uint32_t    parsed;
+
+	if ((token == NULL) || (value == NULL)) {
+		return false;
+	}
+
+	parsed = ascii_to_decimal(token, &ok);
+	if (ok) {
+		*value = parsed;
+	}
+
+	return ok;
+}
+
+bool cmd_arg_sdec(int32_t *value)
+{
+	const char *token = cmd_arg_str();
+	bool        ok    = false;
+	int32_t     parsed;
+
+	if ((token == NULL) || (value == NULL)) {
+		return false;
+	}
+
+	parsed = ascii_to_signed_decimal(token, &ok);
+	if (ok) {
+		*value = parsed;
+	}
+
+	return ok;
+}
+
+bool cmd_arg_hex(uint32_t *value)
+{
+	const char *token = cmd_arg_str();
+	bool        ok    = false;
+	uint32_t    parsed;
+
+	if ((token == NULL) || (value == NULL)) {
+		return false;
+	}
+
+	parsed = ascii_to_integer(token, &ok);
+	if (ok) {
+		*value = parsed;
+	}
+
+	return ok;
+}
+
+bool cmd_arg_onoff(bool *on)
+{
+	const char *token = cmd_arg_str();
+
+	if ((token == NULL) || (on == NULL)) {
+		return false;
+	}
+
+	return ascii_to_on_off(token, on);
+}
+
+/* ─────────────────────── 등록 / HELP ─────────────────────── */
+
+static const cmd_entry_t *find_entry(const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i < s_count; i++) {
+		if (s_table[i].handler == NULL) {
+			continue; /* 구분선 */
+		}
+		if (ascii_equal_nocase(name, s_table[i].name)) {
+			return &s_table[i];
+		}
+	}
+
+	return NULL;
+}
+
+bool cmd_register(const char *name, const char *args, cmd_handler_t handler)
+{
+	if (name == NULL) {
+		return false;
+	}
+	if (s_count >= CMD_MAX_ENTRIES) {
+		LOG_E(TAG, "table full, '%s' dropped (raise CMD_MAX_ENTRIES)", name);
+		return false;
+	}
+	if ((handler != NULL) && (find_entry(name) != NULL)) {
+		LOG_E(TAG, "duplicate command '%s'", name);
+		return false;
+	}
+
+	s_table[s_count].name    = name;
+	s_table[s_count].args    = args;
+	s_table[s_count].handler = handler;
+	s_count++;
+
 	return true;
 }
 
-/* [TODO] 여기에 명령 핸들러를 추가하세요. 예시:
- *
- * static bool cmd_led(uint32_t argc, char *argv[], cmd_parser_reply_cb_t out)
- * {
- *     if (argc < 1) { out("ERR need ON|OFF"); return false; }
- *     if (strcasecmp(argv[0], "ON") == 0) {
- *         LED_On(LED0);
- *         out("OK LED ON");
- *     } else {
- *         LED_Off(LED0);
- *         out("OK LED OFF");
- *     }
- *     return true;
- * }
- *
- * static bool cmd_echo(uint32_t argc, char *argv[], cmd_parser_reply_cb_t out);
- * static bool cmd_ver (uint32_t argc, char *argv[], cmd_parser_reply_cb_t out);
- */
-
-/* ─────────────────────── 명령 테이블 ─────────────────────── */
-/*
- * [TODO] 여기에 명령을 등록하세요.
- * 이름은 대소문자를 구분하지 않습니다.
- */
-static const cmd_entry_t COMMAND_TABLE[] = {
-	/* help 문자열은 HELP 명령이 UART 로 그대로 내보낸다. 터미널이 UTF-8
-	 * 로 해석하지 않는 경우가 많으므로 ASCII 로만 적는다. */
-	{ "PING", cmd_ping, "PING - link check, replies PONG" },
-	/* { "LED",  cmd_led,  "LED ON|OFF - 보드 LED 제어" }, */
-	/* { "ECHO", cmd_echo, "ECHO <text> - 받은 문자열을 그대로 돌려준다" }, */
-	/* { "VER",  cmd_ver,  "VER - 펌웨어 빌드 정보" }, */
-};
-
-#define COMMAND_COUNT (sizeof(COMMAND_TABLE) / sizeof(COMMAND_TABLE[0]))
-
-/* ─────────────────────── 해석기 본체 ─────────────────────── */
-
-static bool name_matches(const char *a, const char *b)
+uint32_t cmd_count(void)
 {
-	while (*a != '\0' && *b != '\0') {
-		if (tolower((unsigned char)*a) != tolower((unsigned char)*b)) {
-			return false;
-		}
-		a++;
-		b++;
-	}
-
-	return (*a == '\0' && *b == '\0');
+	return s_count;
 }
 
-static uint32_t tokenize(char *line, char *tokens[], uint32_t max_tokens)
+void cmd_print_help(uint32_t ch)
 {
-	uint32_t count = 0;
-	char *cursor = line;
-
-	while (*cursor != '\0' && count < max_tokens) {
-		while (*cursor == ' ' || *cursor == '\t') {
-			*cursor = '\0';
-			cursor++;
-		}
-		if (*cursor == '\0') {
-			break;
-		}
-
-		tokens[count++] = cursor;
-
-		while (*cursor != '\0' && *cursor != ' ' && *cursor != '\t') {
-			cursor++;
-		}
-	}
-
-	return count;
-}
-
-void cmd_parser_init(cmd_parser_reply_cb_t reply_cb)
-{
-	s_reply = reply_cb;
-	LOG_I(TAG, "%lu command(s) registered", (unsigned long)COMMAND_COUNT);
-}
-
-bool cmd_parser_handle_line(char *line)
-{
-	char    *tokens[CMD_ARG_MAX + 1u];
-	uint32_t count;
 	uint32_t i;
 
-	count = tokenize(line, tokens, CMD_ARG_MAX + 1u);
-	if (count == 0u) {
-		return false; /* 빈 줄 */
-	}
+	cmd_printf(ch, "==== command list");
 
-	for (i = 0; i < COMMAND_COUNT; i++) {
-		if (!name_matches(tokens[0], COMMAND_TABLE[i].name)) {
+	for (i = 0; i < s_count; i++) {
+		if (s_table[i].handler == NULL) {
+			cmd_printf(ch, "%s", s_table[i].name); /* 구분선 */
 			continue;
 		}
 
-		LOG_I(TAG, "exec '%s'", COMMAND_TABLE[i].name);
+		cmd_printf(ch, " %-16s %s", s_table[i].name,
+				(s_table[i].args != NULL) ? s_table[i].args : "");
+	}
+}
 
-		if (!COMMAND_TABLE[i].handler(count - 1u, &tokens[1], reply)) {
-			reply("ERR command failed");
-		}
-		return true;
+static void cmd_help(uint32_t ch)
+{
+	cmd_print_help(ch);
+}
+
+/* ─────────────────────── 해석기 ─────────────────────── */
+
+void cmd_parser_init(cmd_write_fn_t write_fn)
+{
+	s_write  = write_fn;
+	s_count  = 0;
+	s_cursor = NULL;
+
+	cmd_register("help", 0, cmd_help);
+}
+
+bool cmd_parser_handle_line(uint32_t ch, char *line)
+{
+	const cmd_entry_t *entry;
+	char              *name;
+
+	if (line == NULL) {
+		return false;
 	}
 
-	LOG_W(TAG, "unknown command '%s'", tokens[0]);
-	reply("ERR unknown command");
-	return false;
+	s_cursor = line;
+
+	name = cmd_arg_str();
+	if (name == NULL) {
+		return false; /* 빈 줄 */
+	}
+
+	entry = find_entry(name);
+	if (entry == NULL) {
+		LOG_W(TAG, "unknown command '%s'", name);
+		cmd_printf(ch, "ERR: unknown command (%s) - type 'help'", name);
+		return false;
+	}
+
+	LOG_I(TAG, "exec '%s'", entry->name);
+	entry->handler(ch);
+
+	return true;
 }

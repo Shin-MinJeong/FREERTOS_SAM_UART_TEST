@@ -1,11 +1,8 @@
 /*
  * screen_console.h
  *
- * 버튼으로 ASCII 명령을 보내는 화면.
+ * 버튼으로 ASCII 명령을 실행하는 화면.
  *
- * 이 모듈은 UART 를 모른다. "어떤 명령을 보내달라"는 요청만 콜백으로
- * 올린다. 그래서 버튼을 추가해도 통신 코드는 손대지 않는다.
- * (기존 프로젝트의 screen_gallery 가 쓰던 것과 같은 패턴)
  */
 
 #ifndef SCREEN_CONSOLE_H_

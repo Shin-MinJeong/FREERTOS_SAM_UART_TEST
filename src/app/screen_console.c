@@ -1,11 +1,11 @@
 /*
  * screen_console.c
  *
- * ===========================================================
- *  골격 파일입니다.
- *  버튼 1개(PING)와 로그 영역까지 동작합니다.
- *  [TODO] 의 BUTTON_TABLE 에 줄을 추가해 버튼을 늘리세요.
- * ===========================================================
+ * 버튼으로 ASCII 명령을 실행하는 화면.
+ *
+ * 버튼 하나는 "터미널에 이 문자열을 타이핑한 것과 같다"는 뜻이다.
+ * 그래서 버튼을 추가할 때 새로 만들 함수는 없다. cmd_table.c 에 이미
+ * 등록된 명령 이름을 아래 표에 적기만 하면 된다.
  */
 
 #include "main.h"
@@ -22,17 +22,20 @@ static screen_console_send_cb_t s_on_send;
 
 typedef struct {
 	const char *label;   /**< 화면에 보일 글자 */
-	const char *command; /**< ASCII 명령 */
+	const char *command; /**< 실행할 ASCII 명령 (cmd_table.c 에 등록된 것) */
 } console_button_t;
 
 /*
- * [TODO] 여기에 버튼을 추가하세요.
+ * 버튼 추가: 줄 하나만 늘리면 된다.
+ * command 는 터미널에 치는 문자열 그대로다. 대소문자는 구분하지 않고
+ * "led on" 처럼 인자도 함께 적을 수 있다.
  */
 static const console_button_t BUTTON_TABLE[] = {
-	{ "PING", "PING"    },
-	{ "ON"  , "LED ON"  },
-	{ "OFF" , "LED OFF" },
-	/* { "VERSION", "VER"     }, */
+	{ "PING"   , "ping"    },
+	{ "ON"     , "led on"  },
+	{ "OFF"    , "led off" },
+	{ "VERSION", "ver"     },
+	/* { "STATUS", "status" }, */
 };
 
 #define BUTTON_COUNT (sizeof(BUTTON_TABLE) / sizeof(BUTTON_TABLE[0]))
@@ -47,6 +50,8 @@ static void on_button_clicked(lv_event_t *event)
 	}
 
 	LOG_I(TAG, "button '%s' -> \"%s\"", button->label, button->command);
+
+	/* 실행은 app_comm 이 한다. 이 화면은 UART 도 파서도 모른다. */
 	s_on_send(button->command);
 
 	screen_console_log(button->command);

@@ -14,7 +14,7 @@
  * === include 순서 규칙 ===
  *   표준 C  ->  벤더(ASF/FreeRTOS/LVGL)  ->  설정  ->  port  ->  bsp  ->  app
  *
- * 의존 방향도 같다:  app -> port -> bsp -> 벤더  (역방향 호출 금지)
+ * 의존 방향:  app -> port -> bsp -> 벤더  (역방향 호출 금지)
  * 이 헤더가 모든 것을 노출하므로 컴파일러는 계층 위반을 잡아 주지
  * 못한다. 규칙은 사람이 지켜야 한다.
  */
@@ -45,7 +45,9 @@
 /* ─────────────── FreeRTOS ─────────────── */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 #include "semphr.h"
+#include "portable.h"
 
 /* ─────────────── LVGL ─────────────── */
 #include "lvgl.h"
@@ -69,7 +71,9 @@
 /* ─────────────── app : 애플리케이션 로직 ─────────────── */
 #include "app_config.h"
 #include "ui_theme.h"
+#include "ascii_string.h"
 #include "cmd_parser.h"
+#include "cmd_table.h"
 #include "app_comm.h"
 #include "screen_console.h"
 #include "app_diag.h"

@@ -2711,6 +2711,15 @@
     <Compile Include="src\app\include\cmd_parser.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\app\cmd_table.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\app\include\cmd_table.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\app\include\ascii_string.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\app\app_comm.c">
       <SubType>compile</SubType>
     </Compile>
