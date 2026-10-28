@@ -105,21 +105,3 @@ ASF / lvgl / config   (벤더)
 
 > 터미널이 입력을 에코하지 않습니다(MCU 가 에코를 안 보냄). 타이핑이 안 보여도
 > 정상입니다. 줄 끝은 CR/LF/CRLF 아무거나 됩니다.
-
-## 검증 상태
-
-- 전체 소스 컴파일 성공, 링크 성공 (text 379,736 / bss 88,552 바이트)
-- 프로젝트 코드 `-Wall -Wextra` 경고 0 (남은 경고는 전부 ASF/LVGL 벤더 코드)
-- `USART1_Handler` 가 강한 심볼로 링크된 것까지 확인 (`nm` 기준 `T`)
-- **하드웨어 실동작은 검증하지 않았습니다.** 컴파일·링크까지만 확인했습니다.
-
-## 원본에서 제거한 것
-
-`SD/FatFs` 계열 전부: `bsp_storage`, `fs_io`, `image_*`, `screen_gallery`,
-`screen_viewer`, `app_gallery`, `assets/`(이미지 10장),
-`config/` 의 SD 설정 5개, `lv_conf.h` 의 `LV_USE_FS_FATFS`(→0).
-
-ASF 컴포넌트(HSMCI / SD-MMC / FatFs / ctrl_access / virtual_mem / SPI)는
-**파일은 남기고 빌드에서만 제외**했습니다. ASF Wizard 가 관리하는 트리를
-손으로 지우지 않기 위함입니다. 완전히 없애려면 Atmel Studio 의
-ASF Wizard 에서 해당 컴포넌트를 Remove 하세요.
